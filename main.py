@@ -1,60 +1,38 @@
-import requests
 import datetime
-from telegram.ext import Updater, MessageHandler, Filters, ConversationHandler
-from telegram.ext import CallbackContext, CommandHandler
-from telegram import ReplyKeyboardMarkup
-from telegram import ReplyKeyboardRemove
-
-import urllib.request
 import time
-import schedule
+import urllib.request
+from datetime import timedelta, datetime
 
-# Напишем соответствующие функции.
-# Их сигнатура и поведение аналогичны обработчикам текстовых сообщений. def start(update, context):
+import requests
+import schedule
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import Updater, MessageHandler, Filters, ConversationHandler, CallbackContext, CommandHandler
+
+
 def start(update, context):
     update.message.reply_text("Привет! Я бот-расписание. Напишите мне свое ФИО, и я пришлю расписание!")
-    # Число-ключ в словаре states —
-    # втором параметре ConversationHandler'а.
+    context.user_data['homework'] = []
     return 1
-    # Оно указывает, что дальше на сообщения от этого пользователя
+    # return 1 указывает, что дальше на сообщения от этого пользователя
     # должен отвечать обработчик states[1].
     # До этого момента обработчиков текстовых сообщений
     # для этого пользователя не существовало,
     # поэтому текстовые сообщения игнорировались.
+
 
 def first_response(update, context):
     # Это ответ на первый вопрос.
     # Мы можем использовать его во втором вопросе.
     context.user_data['surname'] = update.message.text
     surname_name = update.message.text
-    print(surname_name)
-    print(surname_name)
     reply_keyboard = [['/timetable'],
                       ['/settings']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-    update.message.reply_text("Отлично!Если хочешь посмотреть расписание нажми tametable", reply_markup=markup)
+    update.message.reply_text("Отлично!Если хочешь посмотреть расписание нажми /timetable", reply_markup=markup)
     # update.message.reply_text(reply_markup=ReplyKeyboardRemove())
     # Следующее текстовое сообщение будет обработано
     # обработчиком states[2]
-
     return ConversationHandler.END
-
-
-
-def second_response(update, context):
-    # Ответ на второй вопрос.
-    # Мы можем его сохранить в базе данных или переслать куда-либо.
-    weather = update.message.text
-    print(weather)
-    print(weather)
-    print(weather)
-
-
-    update.message.reply_text("Спасибо за участие в опросе! Всего доброго!")
-    return ConversationHandler.END
-    # Константа, означающая конец диалога.
-    # Все обработчики из states и fallbacks становятся неактивными.
-
 
 
 def stop(update, context):
@@ -65,62 +43,88 @@ def stop(update, context):
 
 def help(update, context):
     ''' описывает работу других команд '''
-    update.message.reply_text("/timetable - показывает... \n/settings - показывает настройки  ")
+    update.message.reply_text('/timetable - показывает расписание на день \n/settings - показывает настройки \n'
+                              '/week показывает расписание на неделю\n'
+                              'Если хочешь добавить дз напиши его в чат, если хочешь удалить напиши"/del_homework <номер дз>" ')
+
 
 def timetable(update, context):
-    ''' Сперва заходин на сайт руза
-    потом вводит данные о вас
-    и накронец выводит расписание на сегодняшний день с сайта'''
+    ''' '''
+
     update.message.reply_text('Расписание')
     api_server = ['https://ruz.hse.ru/api/search?term=', '&type=student']
     response = requests.get(api_server[0] + context.user_data['surname'] + api_server[1])
     json_response = response.json()
     id = json_response[0]['id']
-    print(id)
+    context.user_data['id'] = id
     api_server = ['https://ruz.hse.ru/api/schedule/student/', '&start=', '&finish=', '&lng=1']
-    now = datetime.datetime.now()
+    now = datetime.now()
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
-    response = requests.get(api_server[0] + id + api_server[1] + today+api_server[2] + today + api_server[3])
-    print(api_server[0] + id + api_server[1] + today+api_server[2] + today + api_server[3])
+    response = requests.get(api_server[0] + id + api_server[1] + today + api_server[2] + today + api_server[3])
     json_response = response.json()
-    print(json_response)
     for i in json_response:
-        update.message.reply_text(' '.join([i['discipline'],'ведет',i['lecturer_title'] ,'С',i['beginLesson'],'по', i['endLesson']]))
-
-
-
+        update.message.reply_text(
+            ' '.join([i['discipline'], 'ведет', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
 
     reply_keyboard = [['/help'],
                       ['/week'],
                       ['/settings']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-    update.message.reply_text('Если хочешь на неделю нажми на кнопку', reply_markup=markup)
+    update.message.reply_text('Если хочешь на неделю нажми на кнопку /week', reply_markup=markup)
+    return context.user_data['id']
+
 
 def week(update, context):
-    pass
+    now = datetime.now()
+    today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
+    in_seven_days = datetime.now() + timedelta(7)
+    in_seven_days = str(in_seven_days.year) + '.' + str(in_seven_days.month) + '.' + str(in_seven_days.day)
+    api_server = ['https://ruz.hse.ru/api/schedule/student/', '&start=', '&finish=', '&lng=1']
+    response = requests.get(
+        api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_seven_days + api_server[3])
+    json_response = response.json()
+    print(
+        api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_seven_days + api_server[3])
+    for i in json_response:
+        update.message.reply_text(
+            ' '.join([i['discipline'], 'ведет', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
 
 
 def settings(update, context):
-    reply_keyboard = [['/help'],
-                      ['/timetable'],
-                      ['/settings']]
+    reply_keyboard = [['/help', '/timetable'],
+                      ['/homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-    update.message.reply_text('Настройки', reply_markup=markup)
+    update.message.reply_text('Если хочешь каждый день получать расписание - нажми на /set', reply_markup=markup)
 
 
-# Определяем функцию-обработчик сообщений.
-# У неё два параметра, сам бот и класс updater, принявший сообщение.
-def echo(update, context):
-    reply_keyboard = [['/help'],
-                      ['/timetable'],
-                      ['/settings']]
+def homework(update, context):
+    reply_keyboard = [['/del_homework']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+    for i in range(len(context.user_data['homework'])):
+        update.message.reply_text(str(i + 1) + ' ' + str(context.user_data['homework'][i]))
+    update.message.reply_text(
+        'Если хочешь добавить домашнее задание напиши его в чат, если хочешь удалить "/del_homework <номер дз>"',
+        reply_markup=markup)
+
+
+def add_homework(update, context):
+    reply_keyboard = [['/help', '/timetable'],
+                      ['/homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-    # У объекта класса Updater есть поле message,
-    # являющееся объектом сообщения.
-    # У message есть поле text, содержащее текст полученного сообщения,
-    # а также метод reply_text(str),
-    # отсылающий ответ пользователю, от которого получено сообщение.
-    update.message.reply_text(update.message.text, reply_markup=markup)
+    context.user_data['homework'].append(update.message.text)
+    update.message.reply_text('Добавил ' + str(context.user_data['homework'][-1]) + ' в список домашнего задания',
+                              reply_markup=markup)
+
+
+def del_homework(update, context):
+    reply_keyboard = [['/help', '/timetable'],
+                      ['/set', '/homework']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+
+    del context.user_data['homework'][int(update.message.text.split(' ')[1]) - 1]
+    for i in range(len(context.user_data['homework'])):
+        update.message.reply_text(
+            ' '.join([str(i + 1), str(context.user_data['homework'][i])]), reply_markup=markup)
 
 
 def main():
@@ -134,7 +138,6 @@ def main():
     # После регистрации обработчика в диспетчере
     # эта функция будет вызываться при получении сообщения
     # с типом "текст", т. е. текстовых сообщений.
-    text_handler = MessageHandler(Filters.text, echo)
     # Регистрируем обработчик в диспетчере.
     # dp.add_handler(text_handler)
 
@@ -146,13 +149,14 @@ def main():
         # Вариант с двумя обработчиками, фильтрующими текстовые сообщения.
         states={
             # Функция читает ответ на первый вопрос и задаёт второй.
-            1: [MessageHandler(Filters.text, first_response, pass_user_data = True)],
+            1: [MessageHandler(Filters.text, first_response, pass_user_data=True)]
             # Функция читает ответ на второй вопрос и завершает диалог.
-            2: [MessageHandler(Filters.text, second_response, pass_user_data=True)]},
+        },
         # Точка прерывания диалога. В данном случае — команда /stop.
         fallbacks=[CommandHandler('stop', stop)]
     )
     dp.add_handler(conv_handler)
+
     # Зарегистрируем их в диспетчере рядом
     # с регистрацией обработчиков текстовых сообщений.
     # Первым параметром конструктора CommandHandler я
@@ -162,7 +166,10 @@ def main():
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("timetable", timetable))
     dp.add_handler(CommandHandler("week", week))
-
+    dp.add_handler(CommandHandler("settings", settings))
+    dp.add_handler(CommandHandler("homework", homework, pass_user_data=True))
+    dp.add_handler(CommandHandler("del_homework", del_homework, pass_user_data=True, pass_chat_data=True))
+    dp.add_handler(MessageHandler(Filters.text, add_homework, pass_user_data=True))
 
     # Запускаем dp.add_handler(CommandHandler("student", student))
     #     dp.add_handler(CommandHandler("teacher", teacher))цикл приема и обработки сообщений.
@@ -175,4 +182,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
