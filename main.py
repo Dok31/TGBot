@@ -95,7 +95,7 @@ def settings(update, context):
     reply_keyboard = [['/help', '/timetable'],
                       ['/homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-    update.message.reply_text('Если хочешь каждый день получать расписание - нажми на /set', reply_markup=markup)
+    update.message.reply_text('Если хочешь удалить запись о домашнем задании - нажми на /homework', reply_markup=markup)
 
 
 def homework(update, context):
