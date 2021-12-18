@@ -19,7 +19,6 @@ def start(update, context):
     return 1
 
 
-
 def first_response(update, context):
     ''' Принемает ФИО пользователя, для дальнейшего  обноружения его рассписания
         После чего следующее текстовое сообщение будет обработано обработчиком states[2] '''
@@ -136,7 +135,7 @@ def del_homework(update, context):
 def exams(update, context):
     '''Выводит в чат список ближайших экзаменов'''
     now = datetime.now()
-    proverochka=0
+    proverochka = 0
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
     in_three_mon = datetime.now() + timedelta(90)
     in_three_mon = str(in_three_mon.year) + '.' + str(in_three_mon.month) + '.' + str(in_three_mon.day)
@@ -145,18 +144,19 @@ def exams(update, context):
         api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_three_mon + api_server[3])
     json_response = response.json()
     for i in json_response:
-        if proverochka!=1:
+        if proverochka != 1:
             if i['kindOfWork'] == 'Экзамен Online' or i['kindOfWork'] == 'Экзамен':
-                proverochka+=1
+                proverochka += 1
                 update.message.reply_text(
                     ' '.join(
-                        [i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
+                        [i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по',
+                         i['endLesson']]))
 
 
 def main():
     ''' Функция является одной из главнейших частей, ибо она заставляет работать бота.
-       Особенность: вместо слова "TOKEN" надо разместить полученный от @BotFather токен.
-       Работа: После полусения диспетчера сообщений созадется отдельный обработчик сообщений типа Filters.text  из описанной выше функции echo()
+       Особенность: в Updater надо передать полученный от @BotFather токен.
+       Работа: После получения диспетчера сообщений созадется отдельный обработчик сообщений типа Filters.text
        Следующий этап работы: после регистрации обработчика в диспетчере функция- она будет вызываться при получении сообщения с типом "текст", т. е. текстовых сообщений.
        Последующий этап: регистрируем обработчик в диспетчере. После чего начинается вход в диалог, с двумя обработчиками, фильтрующими текстовые сообщения.
        Функция :states={
@@ -183,7 +183,6 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
     dp.add_handler(conv_handler)
-
 
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
