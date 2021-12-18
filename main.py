@@ -42,17 +42,17 @@ def stop(update, context):
 
 
 def help(update, context):
-    ''' описывает работу других команд '''
+    ''' Описывает работу других команд '''
     update.message.reply_text(
         '/timetable - показывает расписание на день \n'
-        '/settings - показывает настройки \n' 
+        '/settings - показывает настройки \n'
         '/week показывает расписание на неделю\n'
         'Если хочешь добавить дз напиши его в чат, если хочешь удалить напиши "/del_homework <номер дз>"\n'
         'Если хочешь узнать даты экзаменов зайди в /timetable и нажми /exams')
 
 
 def timetable(update, context):
-    ''' '''
+    '''Выводит в чат расписание пар на сегодняшний день '''
 
     update.message.reply_text('Расписание')
     api_server = ['https://ruz.hse.ru/api/search?term=', '&type=student']
@@ -77,6 +77,7 @@ def timetable(update, context):
 
 
 def week(update, context):
+    '''Выводит в чат расписание пар на неделю'''
     now = datetime.now()
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
     in_seven_days = datetime.now() + timedelta(7)
@@ -108,6 +109,7 @@ def homework(update, context):
 
 
 def add_homework(update, context):
+    '''Добавляет запись о домашней работе'''
     reply_keyboard = [['/help', '/timetable'],
                       ['/homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
@@ -117,6 +119,7 @@ def add_homework(update, context):
 
 
 def del_homework(update, context):
+    '''Удаляет запись о домашней работе по номеру'''
     reply_keyboard = [['/help', '/timetable'],
                       ['/set', '/homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
@@ -128,6 +131,7 @@ def del_homework(update, context):
 
 
 def exams(update, context):
+    '''Выводит в чат список ближайших экзаменов'''
     now = datetime.now()
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
     in_three_mon = datetime.now() + timedelta(90)
@@ -139,8 +143,8 @@ def exams(update, context):
     for i in json_response:
         if i['kindOfWork'] == 'Экзамен Online' or i['kindOfWork'] == 'Экзамен':
             update.message.reply_text(
-            ' '.join([i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
-
+                ' '.join(
+                    [i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
 
 
 def main():
