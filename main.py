@@ -43,9 +43,12 @@ def stop(update, context):
 
 def help(update, context):
     ''' описывает работу других команд '''
-    update.message.reply_text('/timetable - показывает расписание на день \n/settings - показывает настройки \n'
-                              '/week показывает расписание на неделю\n'
-                              'Если хочешь добавить дз напиши его в чат, если хочешь удалить напиши"/del_homework <номер дз>" ')
+    update.message.reply_text(
+        '/timetable - показывает расписание на день \n'
+        '/settings - показывает настройки \n' 
+        '/week показывает расписание на неделю\n'
+        'Если хочешь добавить дз напиши его в чат, если хочешь удалить напиши "/del_homework <номер дз>"\n'
+        'Если хочешь узнать даты экзаменов зайди в /timetable и нажми /exams')
 
 
 def timetable(update, context):
@@ -66,9 +69,8 @@ def timetable(update, context):
         update.message.reply_text(
             ' '.join([i['discipline'], 'ведет', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
 
-    reply_keyboard = [['/help'],
-                      ['/week'],
-                      ['/settings']]
+    reply_keyboard = [['/exams', '/week'],
+                      ['/settings', '/help']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     update.message.reply_text('Если хочешь на неделю нажми на кнопку /week', reply_markup=markup)
     return context.user_data['id']
@@ -83,8 +85,6 @@ def week(update, context):
     response = requests.get(
         api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_seven_days + api_server[3])
     json_response = response.json()
-    print(
-        api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_seven_days + api_server[3])
     for i in json_response:
         update.message.reply_text(
             ' '.join([i['discipline'], 'ведет', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
@@ -127,6 +127,22 @@ def del_homework(update, context):
             ' '.join([str(i + 1), str(context.user_data['homework'][i])]), reply_markup=markup)
 
 
+def exams(update, context):
+    now = datetime.now()
+    today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
+    in_three_mon = datetime.now() + timedelta(90)
+    in_three_mon = str(in_three_mon.year) + '.' + str(in_three_mon.month) + '.' + str(in_three_mon.day)
+    api_server = ['https://ruz.hse.ru/api/schedule/student/', '&start=', '&finish=', '&lng=1']
+    response = requests.get(
+        api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_three_mon + api_server[3])
+    json_response = response.json()
+    for i in json_response:
+        if i['kindOfWork'] == 'Экзамен Online' or i['kindOfWork'] == 'Экзамен':
+            update.message.reply_text(
+            ' '.join([i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
+
+
+
 def main():
     # Создаём объект updater.
     # Вместо слова "TOKEN" надо разместить полученный от @BotFather токен
@@ -167,6 +183,7 @@ def main():
     dp.add_handler(CommandHandler("timetable", timetable))
     dp.add_handler(CommandHandler("week", week))
     dp.add_handler(CommandHandler("settings", settings))
+    dp.add_handler(CommandHandler("exams", exams))
     dp.add_handler(CommandHandler("homework", homework, pass_user_data=True))
     dp.add_handler(CommandHandler("del_homework", del_homework, pass_user_data=True, pass_chat_data=True))
     dp.add_handler(MessageHandler(Filters.text, add_homework, pass_user_data=True))
