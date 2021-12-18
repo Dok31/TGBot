@@ -10,28 +10,27 @@ from telegram.ext import Updater, MessageHandler, Filters, ConversationHandler, 
 
 
 def start(update, context):
+    '''Функция вызываемая началом с ней работы
+        return 1 указывает, что дальше на сообщения от этого пользователя, должен отвечать обработчик states[1].
+        До этого момента обработчиков текстовых сообщений для этого пользователя не существовало, поэтому текстовые сообщения игнорировались.'''
+
     update.message.reply_text("Привет! Я бот-расписание. Напишите мне свое ФИО, и я пришлю расписание!")
     context.user_data['homework'] = []
     return 1
-    # return 1 указывает, что дальше на сообщения от этого пользователя
-    # должен отвечать обработчик states[1].
-    # До этого момента обработчиков текстовых сообщений
-    # для этого пользователя не существовало,
-    # поэтому текстовые сообщения игнорировались.
+
 
 
 def first_response(update, context):
-    # Это ответ на первый вопрос.
-    # Мы можем использовать его во втором вопросе.
+    ''' Принемает ФИО пользователя, для дальнейшего  обноружения его рассписания
+        После чего следующее текстовое сообщение будет обработано обработчиком states[2] '''
+
     context.user_data['surname'] = update.message.text
     surname_name = update.message.text
     reply_keyboard = [['/timetable'],
                       ['/settings']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     update.message.reply_text("Отлично!Если хочешь посмотреть расписание нажми /timetable", reply_markup=markup)
-    # update.message.reply_text(reply_markup=ReplyKeyboardRemove())
-    # Следующее текстовое сообщение будет обработано
-    # обработчиком states[2]
+
     return ConversationHandler.END
 
 
@@ -52,7 +51,9 @@ def help(update, context):
 
 
 def timetable(update, context):
-    '''Выводит в чат расписание пар на сегодняшний день '''
+    ''' Принимает на вход значение ФИО ученика, составляя из его персональных данных и текущего дня ссылку. Из которой в свою очередь составялется новая ссылка с расписанием
+     После ввывода рассписания предлагается ввывести расписсание уже на всю неделю, считая этот день первым.
+     При отсутствии такого ученика ничего не будет выводится из рассписания '''
 
     update.message.reply_text('Расписание')
     api_server = ['https://ruz.hse.ru/api/search?term=', '&type=student']
@@ -73,7 +74,7 @@ def timetable(update, context):
                       ['/settings', '/help']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     update.message.reply_text('Если хочешь на неделю нажми на кнопку /week', reply_markup=markup)
-    return context.user_data['id']
+    return str(context.user_data['id'])
 
 
 def week(update, context):
@@ -99,6 +100,8 @@ def settings(update, context):
 
 
 def homework(update, context):
+    ''' Функция предлагает сделать выбор  из следующих функций
+       При выборе /homework предлагается 2 параметра: добавить заадние или убрать выполненное. Вся база сохранена в подобие массива'''
     reply_keyboard = [['/del_homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     for i in range(len(context.user_data['homework'])):
@@ -133,6 +136,7 @@ def del_homework(update, context):
 def exams(update, context):
     '''Выводит в чат список ближайших экзаменов'''
     now = datetime.now()
+    proverochka=0
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
     in_three_mon = datetime.now() + timedelta(90)
     in_three_mon = str(in_three_mon.year) + '.' + str(in_three_mon.month) + '.' + str(in_three_mon.day)
@@ -141,46 +145,45 @@ def exams(update, context):
         api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_three_mon + api_server[3])
     json_response = response.json()
     for i in json_response:
-        if i['kindOfWork'] == 'Экзамен Online' or i['kindOfWork'] == 'Экзамен':
-            update.message.reply_text(
-                ' '.join(
-                    [i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
+        if proverochka!=1:
+            if i['kindOfWork'] == 'Экзамен Online' or i['kindOfWork'] == 'Экзамен':
+                proverochka+=1
+                update.message.reply_text(
+                    ' '.join(
+                        [i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
 
 
 def main():
-    # Создаём объект updater.
-    # Вместо слова "TOKEN" надо разместить полученный от @BotFather токен
+    ''' Функция является одной из главнейших частей, ибо она заставляет работать бота.
+       Особенность: вместо слова "TOKEN" надо разместить полученный от @BotFather токен.
+       Работа: После полусения диспетчера сообщений созадется отдельный обработчик сообщений типа Filters.text  из описанной выше функции echo()
+       Следующий этап работы: после регистрации обработчика в диспетчере функция- она будет вызываться при получении сообщения с типом "текст", т. е. текстовых сообщений.
+       Последующий этап: регистрируем обработчик в диспетчере. После чего начинается вход в диалог, с двумя обработчиками, фильтрующими текстовые сообщения.
+       Функция :states={
+                 Функция читает ответ на первый вопрос и задаёт второй.
+               1: [MessageHandler(Filters.text, first_response, pass_user_data=True)]
+                 Функция читает ответ на второй вопрос и завершает диалог.
+           },
+           fallbacks=[CommandHandler('stop', stop)]
+       )
+            Точка прерывания диалога. В данном случае — команда /stop. Зарегистрируем их в диспетчере рядом с регистрацией обработчиков текстовых сообщений. Первым параметром конструктора CommandHandler я
+       # вляется название команды.'''
     updater = Updater('5037391482:AAHhRsvJ-MkFD-JUrdlQ87R55ump9Y6h9W0', use_context=True)
-    # Получаем из него диспетчер сообщений.
+
     dp = updater.dispatcher
-    # Создаём обработчик сообщений типа Filters.text
-    # из описанной выше функции echo()
-    # После регистрации обработчика в диспетчере
-    # эта функция будет вызываться при получении сообщения
-    # с типом "текст", т. е. текстовых сообщений.
-    # Регистрируем обработчик в диспетчере.
-    # dp.add_handler(text_handler)
 
     conv_handler = ConversationHandler(
-        # Точка входа в диалог.
-        # В данном случае — команда /start. Она задаёт первый вопрос
+
         entry_points=[CommandHandler('start', start)],
-        # Состояние внутри диалога.
-        # Вариант с двумя обработчиками, фильтрующими текстовые сообщения.
+
         states={
-            # Функция читает ответ на первый вопрос и задаёт второй.
             1: [MessageHandler(Filters.text, first_response, pass_user_data=True)]
-            # Функция читает ответ на второй вопрос и завершает диалог.
         },
-        # Точка прерывания диалога. В данном случае — команда /stop.
+
         fallbacks=[CommandHandler('stop', stop)]
     )
     dp.add_handler(conv_handler)
 
-    # Зарегистрируем их в диспетчере рядом
-    # с регистрацией обработчиков текстовых сообщений.
-    # Первым параметром конструктора CommandHandler я
-    # вляется название команды.
 
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
