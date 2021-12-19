@@ -10,10 +10,9 @@ from telegram.ext import Updater, MessageHandler, Filters, ConversationHandler, 
 
 
 def start(update, context):
-    '''Функция вызываемая началом с ней работы
-        return 1 указывает, что дальше на сообщения от этого пользователя, должен отвечать обработчик states[1].
-        До этого момента обработчиков текстовых сообщений для этого пользователя не существовало, поэтому текстовые сообщения игнорировались.'''
-
+    ''' Данная функция запускается автоматически при первом  запуске или при вводе коаманды /start
+     context.user_data[homework] - массив  сохраняющий ломашнее занятие
+     Отправляет сообщенеие для ученика, чтобы он активировал следющую функциую  '''
     update.message.reply_text("Привет! Я бот-расписание. Напишите мне свое ФИО, и я пришлю расписание!")
     context.user_data['homework'] = []
     return 1
@@ -36,13 +35,14 @@ def first_response(update, context):
 
 
 def stop(update, context):
-    ''' дает пользователю закончить опрос'''
+    ''' Данная функция позволяет закакнчивать некоторые функции '''
     update.message.reply_text("Закончил опрос")
     return ConversationHandler.END
 
 
 def help(update, context):
-    ''' Описывает работу других команд '''
+    ''' Чтобы заработала нужно ввести команду /help
+    Данная команда выводит список остальных функций '''
     update.message.reply_text(
         '/timetable - показывает расписание на день \n'
         '/settings - показывает настройки \n'
@@ -52,12 +52,20 @@ def help(update, context):
 
 
 def timetable(update, context):
-    ''' Принимает на вход значение ФИО ученика, составляя из его персональных данных и текущего дня ссылку. Из которой в свою очередь составялется новая ссылка с расписанием
-     После ввывода рассписания предлагается ввывести расписсание уже на всю неделю, считая этот день первым.
-     При отсутствии такого ученика ничего не будет выводится из рассписания '''
+    ''' Данная функция запускается при активации команды /timetable
+    Выводит расписание на сегоднешний день, если есть
+    api_server - переменная для создания  request запроса
+    response -  перемнная, содержащая json файл, в котором записана инофрмация о ученике
+    json_response - открывает файл с расширением  json
+    context.user_data['id'] - добавляет данные о пользователя
+    now - время сегодная
+    today конвертация сегодняшнего now  формат str
+    response - json файл, содержащий в себе информацию о расписании
+    reply_keyboard и markup ответственен за работу и отображение <кнпок> в боте'''
 
     update.message.reply_text('Расписание')
     api_server = ['https://ruz.hse.ru/api/search?term=', '&type=student']
+
     response = requests.get(api_server[0] + context.user_data['surname'] + api_server[1])
     json_response = response.json()
     id = json_response[0]['id']
@@ -67,6 +75,8 @@ def timetable(update, context):
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
     response = requests.get(api_server[0] + id + api_server[1] + today + api_server[2] + today + api_server[3])
     json_response = response.json()
+    if not json_response:
+        update.message.reply_text('СЕГОДНЯ ПАР НЕТ!')
     for i in json_response:
         update.message.reply_text(
             ' '.join([i['discipline'], 'ведет', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
@@ -79,7 +89,15 @@ def timetable(update, context):
 
 
 def week(update, context):
-    '''Выводит в чат расписание пар на неделю'''
+    ''' Данная функция запускается при активации команды /week
+    Выводит расписание на на 7  дней, включая этот день
+    api_server - переменная для создания  request запроса
+    response -  перемнная, содержащая json файл, в котором записана инофрмация о ученике
+    json_response - открывает файл с расширением  json
+    context.user_data['id'] - добавляет данные о пользователя
+    now - время сегодная
+    today конвертация сегодняшнего now  формат str
+    response - json файл, содержащий в себе информацию о расписании'''
     now = datetime.now()
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
     in_seven_days = datetime.now() + timedelta(7)
@@ -90,10 +108,11 @@ def week(update, context):
     json_response = response.json()
     for i in json_response:
         update.message.reply_text(
-            ' '.join([i['discipline'], 'ведет', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
-
+            ' '.join(['В', i['dayOfWeekString'],  i['discipline'], 'ведет', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson'], 'ссылка:', i['url1']]))
 
 def settings(update, context):
+    ''' Данная функция срабатывает при активации команды /settings
+    reply_keyboard и markup - отвечают за отображение кнопок, для быстрого набора команд '''
     reply_keyboard = [['/help', '/timetable'],
                       ['/homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
@@ -101,8 +120,9 @@ def settings(update, context):
 
 
 def homework(update, context):
-    ''' Функция предлагает сделать выбор  из следующих функций
-       При выборе /homework предлагается 2 параметра: добавить заадние или убрать выполненное. Вся база сохранена в подобие массива'''
+    '''Данная функция срабатывает при активации /homework
+    reply_keyboard и markup- показывают какие команды будут доступны
+    цикл отвечает за отправление в чат всех записанных домашних заданий'''
     reply_keyboard = [['/del_homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     for i in range(len(context.user_data['homework'])):
@@ -113,7 +133,10 @@ def homework(update, context):
 
 
 def add_homework(update, context):
-    '''Добавляет запись о домашней работе'''
+    '''Функция активируется при вводе текста
+    reply_keyboard и markup - показывает какая команда будет доступнаи позволяет
+    context.user_data - добавляет дз в массив, ключем которого является 'homework'
+    update.message.reply_text - выводит сообщение об успешном добавлениии дз'''
     reply_keyboard = [['/help', '/timetable'],
                       ['/homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
@@ -123,19 +146,32 @@ def add_homework(update, context):
 
 
 def del_homework(update, context):
-    '''Удаляет запись о домашней работе по номеру'''
+    '''Функция активируется при активации /del_homework, она удаляет запись о домашнем задании по номеру
+    цикл выводит оставшиеся задания
+    reply_keyboard и markup - показывают какие команды будут доступны
+    '''
     reply_keyboard = [['/help', '/timetable'],
                       ['/set', '/homework']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-
-    del context.user_data['homework'][int(update.message.text.split(' ')[1]) - 1]
+    try:
+        del context.user_data['homework'][int(update.message.text.split(' ')[1]) - 1]
+    except Exception:
+        update.message.reply_text('Что ты делаешь')
     for i in range(len(context.user_data['homework'])):
         update.message.reply_text(
             ' '.join([str(i + 1), str(context.user_data['homework'][i])]), reply_markup=markup)
 
 
+
+
 def exams(update, context):
-    '''Выводит в чат список ближайших экзаменов'''
+    '''Функция активируется при активации /exem. Её функция заключается в том, чтобы показать ближайшие экзамены
+    now- время сегодня
+    today- сегодняшная дата
+    in_three_mon -  перемнная требуемая для создания request запроса, содержит в себе дату, котрая наступит через 3 месяца
+    api_server - перемнная требуемая для создания request запроса
+
+    '''
     now = datetime.now()
     proverochka = 0
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
@@ -146,30 +182,21 @@ def exams(update, context):
         api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_three_mon + api_server[3])
     json_response = response.json()
     for i in json_response:
-        if proverochka != 1:
-            if i['kindOfWork'] == 'Экзамен Online' or i['kindOfWork'] == 'Экзамен':
-                proverochka += 1
-                update.message.reply_text(
-                    ' '.join(
-                        [i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по',
-                         i['endLesson']]))
 
+        if i['kindOfWork'] == 'Экзамен Online' or i['kindOfWork'] == 'Экзамен':
+            proverochka += 1
+            update.message.reply_text(
+                ' '.join(
+                    [i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по',
+                     i['endLesson']]))
 
 def main():
-    ''' Функция является одной из главнейших частей, ибо она заставляет работать бота.
-       Особенность: в Updater надо передать полученный от @BotFather токен.
-       Работа: После получения диспетчера сообщений созадется отдельный обработчик сообщений типа Filters.text
-       Следующий этап работы: после регистрации обработчика в диспетчере функция- она будет вызываться при получении сообщения с типом "текст", т. е. текстовых сообщений.
-       Последующий этап: регистрируем обработчик в диспетчере. После чего начинается вход в диалог, с двумя обработчиками, фильтрующими текстовые сообщения.
-       Функция :states={
-                 Функция читает ответ на первый вопрос и задаёт второй.
-               1: [MessageHandler(Filters.text, first_response, pass_user_data=True)]
-                 Функция читает ответ на второй вопрос и завершает диалог.
-           },
-           fallbacks=[CommandHandler('stop', stop)]
-       )
-            Точка прерывания диалога. В данном случае — команда /stop. Зарегистрируем их в диспетчере рядом с регистрацией обработчиков текстовых сообщений. Первым параметром конструктора CommandHandler я
-       # вляется название команды.'''
+    ''' функция main отвественна за работу бота
+    updater - переменная имеющая ссылку на бота
+    entry_points - функция ответсвенная за начало и работу функции
+    updater - экземпляр класса Updater, ответственный за полученеи сообщений и регулирование работы диспечеров
+    dp - диспечер, ответственный за вызов функций в зависимости от полученных сообщений
+    '''
     updater = Updater('5037391482:AAHhRsvJ-MkFD-JUrdlQ87R55ump9Y6h9W0', use_context=True)
 
     dp = updater.dispatcher
@@ -196,12 +223,7 @@ def main():
     dp.add_handler(CommandHandler("del_homework", del_homework, pass_user_data=True, pass_chat_data=True))
     dp.add_handler(MessageHandler(Filters.text, add_homework, pass_user_data=True))
 
-    # Запускаем dp.add_handler(CommandHandler("student", student))
-    #     dp.add_handler(CommandHandler("teacher", teacher))цикл приема и обработки сообщений.
     updater.start_polling()
-    # Ждём завершения приложения.
-    # когда дождались, получаем резульат
-    # (например, получения сигнала SIG_TERM при нажатии клавиш Ctrl+C)
     updater.idle()
 
 
