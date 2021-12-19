@@ -51,7 +51,7 @@ def help(update, context):
         'Если хочешь узнать даты экзаменов зайди в /timetable и нажми /exams')
 
 
-def timetable(update, context):
+def timetable(update, context, *args):
     ''' Данная функция запускается при активации команды /timetable
     Выводит расписание на сегоднешний день, если есть
     api_server - переменная для создания  request запроса
@@ -63,28 +63,35 @@ def timetable(update, context):
     response - json файл, содержащий в себе информацию о расписании
     reply_keyboard и markup ответственен за работу и отображение <кнпок> в боте'''
 
-    update.message.reply_text('Расписание')
     api_server = ['https://ruz.hse.ru/api/search?term=', '&type=student']
-
-    response = requests.get(api_server[0] + context.user_data['surname'] + api_server[1])
+    print(args)
+    if args:
+        response = requests.get(api_server[0] + str(args[0]) + api_server[1])
+    else:
+        update.message.reply_text('Расписание')
+        response = requests.get(api_server[0] + context.user_data['surname'] + api_server[1])
     json_response = response.json()
+
     id = json_response[0]['id']
+    if args:
+        return id
     context.user_data['id'] = id
     api_server = ['https://ruz.hse.ru/api/schedule/student/', '&start=', '&finish=', '&lng=1']
     now = datetime.now()
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
     response = requests.get(api_server[0] + id + api_server[1] + today + api_server[2] + today + api_server[3])
     json_response = response.json()
-    if not json_response:
-        update.message.reply_text('СЕГОДНЯ ПАР НЕТ!')
-    for i in json_response:
-        update.message.reply_text(
-            ' '.join([i['discipline'], 'ведет', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
+    if not args:
+        if not json_response:
+            update.message.reply_text('СЕГОДНЯ ПАР НЕТ!')
+        for i in json_response:
+            update.message.reply_text(
+                ' '.join([i['discipline'], 'ведет', i['lecturer_title'], 'С', i['beginLesson'], 'по', i['endLesson']]))
 
-    reply_keyboard = [['/exams', '/week'],
-                      ['/settings', '/help']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
-    update.message.reply_text('Если хочешь на неделю нажми на кнопку /week', reply_markup=markup)
+        reply_keyboard = [['/exams', '/week'],
+                          ['/settings', '/help']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+        update.message.reply_text('Если хочешь на неделю нажми на кнопку /week', reply_markup=markup)
     return str(context.user_data['id'])
 
 
@@ -165,31 +172,34 @@ def del_homework(update, context):
 
 
 def exams(update, context):
-   '''Функция активируется при активации /exem. Её функция заключается в том, чтобы показать ближайшие экзамены
+    '''Функция активируется при активации /exem. Её функция заключается в том, чтобы показать ближайшие экзамены
     now- время сегодня
     today- сегодняшная дата
     in_three_mon -  перемнная требуемая для создания request запроса, содержит в себе дату, котрая наступит через 3 месяца
     api_server - перемнная требуемая для создания request запроса
-    kolvo -  переменная  хранящая количество экзаменов
+
     '''
     now = datetime.now()
+    proverochka = 0
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
     in_three_mon = datetime.now() + timedelta(90)
-    kolvo=0
     in_three_mon = str(in_three_mon.year) + '.' + str(in_three_mon.month) + '.' + str(in_three_mon.day)
     api_server = ['https://ruz.hse.ru/api/schedule/student/', '&start=', '&finish=', '&lng=1']
     response = requests.get(
         api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_three_mon + api_server[3])
     json_response = response.json()
     for i in json_response:
+
         if i['kindOfWork'] == 'Экзамен Online' or i['kindOfWork'] == 'Экзамен':
-            kolvo= kolvo +1
+            proverochka += 1
             update.message.reply_text(
                 ' '.join(
                     [i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по',
                      i['endLesson']]))
-    if kolvo==0:
-     update.message.reply_text('Экзаменов нет в ближайшее время')
+
+def test1(name):
+    return timetable(None, None, name)
+
 
 def main():
     ''' функция main отвественна за работу бота
@@ -230,3 +240,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
