@@ -165,30 +165,31 @@ def del_homework(update, context):
 
 
 def exams(update, context):
-    '''Функция активируется при активации /exem. Её функция заключается в том, чтобы показать ближайшие экзамены
+   '''Функция активируется при активации /exem. Её функция заключается в том, чтобы показать ближайшие экзамены
     now- время сегодня
     today- сегодняшная дата
     in_three_mon -  перемнная требуемая для создания request запроса, содержит в себе дату, котрая наступит через 3 месяца
     api_server - перемнная требуемая для создания request запроса
-
+    kolvo -  переменная  хранящая количество экзаменов
     '''
     now = datetime.now()
-    proverochka = 0
     today = str(now.year) + '.' + str(now.month) + '.' + str(now.day)
     in_three_mon = datetime.now() + timedelta(90)
+    kolvo=0
     in_three_mon = str(in_three_mon.year) + '.' + str(in_three_mon.month) + '.' + str(in_three_mon.day)
     api_server = ['https://ruz.hse.ru/api/schedule/student/', '&start=', '&finish=', '&lng=1']
     response = requests.get(
         api_server[0] + context.user_data['id'] + api_server[1] + today + api_server[2] + in_three_mon + api_server[3])
     json_response = response.json()
     for i in json_response:
-
         if i['kindOfWork'] == 'Экзамен Online' or i['kindOfWork'] == 'Экзамен':
-            proverochka += 1
+            kolvo= kolvo +1
             update.message.reply_text(
                 ' '.join(
                     [i['discipline'], 'принимает', i['lecturer_title'], 'С', i['beginLesson'], 'по',
                      i['endLesson']]))
+    if kolvo==0:
+     update.message.reply_text('Экзаменов нет в ближайшее время')
 
 def main():
     ''' функция main отвественна за работу бота
