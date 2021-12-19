@@ -20,8 +20,10 @@ def start(update, context):
 
 
 def first_response(update, context):
-    ''' Принемает ФИО пользователя, для дальнейшего  обноружения его рассписания
-        После чего следующее текстовое сообщение будет обработано обработчиком states[2] '''
+    ''' Данная функция сама вызывается после написания сообщения после ввывода  функции start
+    приниамет ФИО студента и сохраняет его
+     context.user_data['surname']- Переменная, хранящая ФИО студента
+     reply_keyboard и markup отвечают за кнопики с командами в боте'''
 
     context.user_data['surname'] = update.message.text
     surname_name = update.message.text
